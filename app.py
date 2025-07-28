@@ -54,7 +54,7 @@ def log_scan(uid, status, msg, device_id, location):
 # ✅ Homepage Route
 @app.route('/')
 def home():
-    return render_template('login.html')  # Or use 'verify.html' as default
+    return render_template('verify.html')  # Or use 'verify.html' as default
 
 # ✅ Verification Endpoint
 @app.route('/api/verify', methods=['POST'])
