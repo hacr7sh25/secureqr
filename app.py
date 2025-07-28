@@ -51,6 +51,11 @@ def log_scan(uid, status, msg, device_id, location):
     except Exception as e:
         print(f"[ERROR LOGGING] {e}")
 
+# ✅ Homepage Route
+@app.route('/')
+def home():
+    return render_template('login.html')  # Or use 'verify.html' as default
+
 # ✅ Verification Endpoint
 @app.route('/api/verify', methods=['POST'])
 def verify():
@@ -113,66 +118,4 @@ def verify():
 def serve_verify_page():
     return render_template('verify.html')
 
-# ✅ Admin Login
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = request.form['username']
-        pwd = request.form['password']
-        if user == ADMIN_USERNAME and pwd == ADMIN_PASSWORD:
-            session['admin'] = True
-            return redirect('/admin')
-        else:
-            return render_template('login.html', error="Invalid credentials")
-    return render_template('login.html')
-
-# ✅ Admin Logout
-@app.route('/logout', methods=['GET', 'POST'])
-def logout():
-    session.pop('admin', None)
-    return redirect('/login')
-
-# ✅ Admin Panel
-@app.route('/admin')
-def admin_panel():
-    if not session.get('admin'):
-        return redirect('/login')
-
-    try:
-        with open("scan_history.json", "r") as f:
-            history = json.load(f)
-    except:
-        history = []
-
-    return render_template("admin.html", history=history)
-
-# ✅ Logs API for filtering/search
-@app.route('/scan_logs')
-def get_logs():
-    try:
-        with open("scan_history.json", "r") as f:
-            data = json.load(f)
-        return jsonify(data)
-    except:
-        return jsonify([])
-
-# ✅ CSV Download Route
-@app.route('/download_csv')
-def download_csv():
-    try:
-        with open("scan_history.json", "r") as f:
-            data = json.load(f)
-        csv_file = "scan_export.csv"
-        with open(csv_file, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=data[0].keys())
-            writer.writeheader()
-            writer.writerows(data)
-        return send_file(csv_file, as_attachment=True)
-    except Exception as e:
-        return str(e)
-
-# ✅ Run
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+#
