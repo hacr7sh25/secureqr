@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f2f2f2;
+      padding: 20px;
+    }
+    video {
+      width: 100%;
+      max-width: 400px;
+      border: 2px solid #333;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #msg {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Secure QR Code Verification</h2>
+  <video id="preview" autoplay></video>
+  <br>
+  <button onclick="scanQRCode()">📷 Scan & Verify</button>
+  <p id="msg">Awaiting scan...</p>
+
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+  <script>
+    let uid = new URLSearchParams(window.location.search).get('id');
+    let ts = new URLSearchParams(window.location.search).get('ts');
+    let locationData = null;
+    let stream = null;
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(s => {
+        stream = s;
+        document.getElementById('preview').srcObject = stream;
+      });
+
+    navigator.geolocation.getCurrentPosition(
+      pos => locationData = `${pos.coords.latitude},${pos.coords.longitude}`
+    );
+
+    async function scanQRCode() {
+      const video = document.getElementById('preview');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/png');
+
+      const qrCode = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+
+      if (!qrCode) {
+        document.getElementById('msg').innerText = "❌ QR not detected. Try again.";
+        return;
+      }
+
+      const payload = {
+        uid: uid,
+        ts: ts,
+        image: imageData,
+        device_id: navigator.userAgent,
+        location: locationData || "unknown"
+      };
+
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      document.getElementById('msg').innerText = result.msg;
+    }
+
+    // 🔒 Screenshot/Tab Switch Detection
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        alert("⚠️ Suspicious activity: Screenshot / tab switch blocked.");
+        location.reload();
+      }
+    });
+
+    // 🔒 DevTools Detection
+    setInterval(() => {
+      if (window.outerWidth - window.innerWidth > 100 || window.outerHeight - window.innerHeight > 100) {
+        alert("🚨 DevTools open. Session terminated.");
+        location.reload();
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
